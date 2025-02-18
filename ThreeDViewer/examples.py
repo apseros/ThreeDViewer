@@ -1,7 +1,7 @@
 import logging
 import magpack.structures
-import vector
-import image
+from . import vector
+from . import image
 
 
 def plot_skyrmion():

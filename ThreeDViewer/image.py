@@ -2,8 +2,9 @@ import logging
 import magpack.vectorop
 import numpy as np
 import matplotlib.pyplot as plt
-from typing import Optional, Union, Tuple
+from typing import Optional, Union, Tuple, Any
 from matplotlib.widgets import Slider
+from matplotlib.axes import Axes
 
 
 def axial_align(x: np.ndarray, y: np.ndarray, z: np.ndarray, index: str) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
@@ -17,7 +18,8 @@ def axial_align(x: np.ndarray, y: np.ndarray, z: np.ndarray, index: str) -> Tupl
 
 
 def plot_3d(data: np.ndarray, fig: plt.Figure = None, extent: list[float] = None, init_take=1, axial=False,
-            save: Optional[str] = None, vmin: Optional[float] = None, vmax: Optional[float] = None, **kwargs) -> None:
+            save: Optional[str] = None, vmin: Optional[float] = None, vmax: Optional[float] = None, **kwargs) -> \
+            Optional[tuple[Axes, Axes]]:
     """Plots a 3D scalar or vector field, with the possibility to slice along different axes."""
     all_data = None
     if data.ndim == 4 and data.shape[-1] != 3 and data.shape[0] == 3:
@@ -89,6 +91,8 @@ def plot_3d(data: np.ndarray, fig: plt.Figure = None, extent: list[float] = None
         fig.savefig(save, dpi=fig.dpi)
         plt.close()
     plt.show()
+
+    return slice_slider, ax_slice_slider
 
 
 def vector_color(data: np.ndarray, saturation: float = 1, mode: int = 1, axial=False, oop=1) -> np.ndarray:
