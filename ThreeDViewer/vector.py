@@ -1,10 +1,14 @@
-import magpack
 import numpy as np
 import pyvista as pv
 
 
 def plot_vector_field(vector_field: np.ndarray):
-    """Plot vector field using pyvista."""
+    """Plot vector field using pyvista.
+
+    :param: vector_field:   Vector field as a numpy array shaped (3, nx, ny, nz). First index corresponds to the
+                            field's components
+    :return:                None
+    """
     # initialize mesh
     _, nx, ny, nz = vector_field.shape
     size = vector_field[0].size
@@ -30,8 +34,11 @@ def plot_vector_field(vector_field: np.ndarray):
 
 
 def plot_scalar_field(field: np.ndarray):
-    """Plot scalar field using pyvista."""
-    # initialize mesh
+    """Plot contours of a scalar field using pyvista.
+
+    :param: scalar:   Scalar field as a numpy array shaped (nx, ny, nz). 
+    :return:          None
+    """    # initialize mesh
     nx, ny, nz = field.shape
     origin = (-(nx - 1) / 2, -(ny - 1) / 2, -(nz - 1) / 2)
     scalar_mesh = pv.ImageData(dimensions=(nx, ny, nz), origin=origin)
