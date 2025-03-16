@@ -1,5 +1,5 @@
 ### Overview
-ThreeDViewer is a plotting tool for visualizing 3D scalar and vector fields in pythong using matplotlib or pyvista.
+ThreeDViewer is a plotting tool for visualizing 3D scalar and vector fields in python using matplotlib or pyvista.
 
 ### Installation
 ThreeDViewer can be installed through pip:
