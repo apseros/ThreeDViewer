@@ -2,9 +2,8 @@ import logging
 import magpack.vectorop
 import numpy as np
 import matplotlib.pyplot as plt
-from typing import Optional, Union, Tuple, Any
+from typing import Optional, Union, Tuple
 from matplotlib.widgets import Slider
-from matplotlib.axes import Axes
 
 
 def axial_align(x: np.ndarray, y: np.ndarray, z: np.ndarray, index: str) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
@@ -23,25 +22,33 @@ def axial_align(x: np.ndarray, y: np.ndarray, z: np.ndarray, index: str) -> Tupl
     return x, y, z
 
 
-def plot_3d(data: np.ndarray, fig: plt.Figure = None, extent: list[float] = None, init_take=1, axial=False,
-            save: Optional[str] = None, vmin: Optional[float] = None, vmax: Optional[float] = None, **kwargs) -> \
-        Optional[tuple[Slider, Slider]]:
+def plot_3d(data: np.ndarray, fig: plt.Figure = None, init_take: int = 1, init_slice: int = 0, axial: bool = False,
+            save: Optional[str] = None, const_color: bool = False, show: bool = True,
+            **kwargs) -> Optional[tuple[Slider, Slider]]:
     """Plots a 3D scalar or vector field, with the possibility to slice along different axes.
 
     :param data:        The 3D scalar or vector field to plot.
     :param fig:         Matplotlib figure to use (by default a new figure will be created).
-    :param extent:      The extent of the 3D scalar or vector field.
     :param init_take:   Initial slicing direction (0, 1, 2) corresponding to the (x, y, z) spatial dimensions.
+    :param init_slice:  Initial slice index.
     :param axial:       True for orientation field coloring, False for vector field coloring.
     :param save:        Filename to save a snapshot of the figure.
-    :param vmin:        Lower bound for the colorbar.
-    :param vmax:        Upper bound for the colorbar.
+    :param const_color: Vector coloring will remain the same regardless of the slicing axis when True.
+    :param show:        True to show figure, false will maintain the figure for plotting later (with plt.show()).
     :param kwargs:      Additional keyword arguments for matplotlib (e.g. cmap).
+    :return:            Slider object to maintain interactivity.
     """
-    all_data = None
+    multi_color = None
     if data.ndim == 4 and data.shape[-1] != 3 and data.shape[0] == 3:
-        all_data = np.stack([vector_color(data, axial=axial, oop=ii) for ii in range(3)])
-        data = all_data[init_take]
+        if const_color:
+            # create rgb image, new shape will be (initial shape, 3)
+            data = vector_color(data, axial=axial, oop=init_take)
+        else:
+            # get a different color for each slicing option such that black and white are out-of- and into-plane colors
+            # new shape will be (3, initial shape, 3)
+            multi_color = np.stack([vector_color(data, axial=axial, oop=ii) for ii in range(3)])
+            data = multi_color[init_take]
+            print(f"{data.shape=}")
 
     elif data.ndim != 3:
         print("Data not 3D and cannot be plotted.")
@@ -51,35 +58,41 @@ def plot_3d(data: np.ndarray, fig: plt.Figure = None, extent: list[float] = None
         fig = plt.figure()
 
     # globals
-    take_axis = [init_take]
-    slice_index = [0]
-    extents = _get_extents(data)
-    extents[2] = extent if extent is not None else extents[2]
+    take_axis = [init_take]  # slicing axis
+    slice_index = [init_slice]  # slicing index, starts at 0
+    extents = _get_extents(data)  # array of extents
 
-    # plot space
-    ax = fig.add_axes((0.15, 0.2, 0.7, 0.7))
+    # image plot space
+    ax = fig.add_axes((0.25, 0.25, 0.7, 0.7), anchor='SW')
+    _set_axis_labels(ax, take_axis[0])
+
     first_img = np.take(data, slice_index[0], axis=take_axis[0]).swapaxes(0, 1)
     image = ax.imshow(first_img, origin='lower', extent=extents[take_axis[0]], **kwargs)
 
-    # adjust the main plot to make room for the sliders
     if data.ndim == 3:
-        if vmin is None:
+        if "vmin" in kwargs and isinstance(kwargs["vmin"], (int, float)):
+            vmin = kwargs["vmin"]
+        else:
             vmin = np.nanmin(data)
-        if vmax is None:
+        if "vmax" in kwargs and isinstance(kwargs["vmax"], (int, float)):
+            vmax = kwargs["vmax"]
+        else:
             vmax = np.nanmax(data)
+
         fig.colorbar(image, ax=ax)
         image.set_clim((vmin, vmax))
 
-    ax_slice = fig.add_axes((0.15, 0.1, 0.5, 0.03))
+    # adjust the main plot to make room for the sliders
+    ax_slice = fig.add_axes((0.3, 0.075, 0.5, 0.025))
     slice_slider = Slider(ax=ax_slice, label='slice', valmin=0, valmax=np.max(data.shape) - 1, valstep=1, valinit=0)
 
-    ax_slice_axis = fig.add_axes((0.05, 0.25, 0.03, 0.5))
-    ax_slice_slider = Slider(ax=ax_slice_axis, label='slice axis', valmin=0, valmax=2, valinit=init_take, valstep=1,
+    ax_axis_slice = fig.add_axes((0.075, 0.25, 0.025, 0.5))
+    ax_slice_slider = Slider(ax=ax_axis_slice, label='slice axis', valmin=0, valmax=2, valinit=init_take, valstep=1,
                              orientation="vertical")
 
     def draw():
-        if all_data is not None:
-            img = np.take(all_data[int(take_axis[0])], int(slice_index[0]), axis=take_axis[0]).swapaxes(0, 1)
+        if multi_color is not None:
+            img = np.take(multi_color[int(take_axis[0])], int(slice_index[0]), axis=take_axis[0]).swapaxes(0, 1)
         else:
             img = np.take(data, int(slice_index[0]), axis=take_axis[0]).swapaxes(0, 1)
         image.set_data(img)
@@ -94,9 +107,12 @@ def plot_3d(data: np.ndarray, fig: plt.Figure = None, extent: list[float] = None
 
     def slice_axis_update(val):
         take_axis[0] = val
+
         if data.shape[take_axis[0]] < slice_index[0]:
             slice_index[0] = 0
+            slice_slider.set_val(slice_index[0])
         image.set_extent(extents[take_axis[0]])
+        _set_axis_labels(ax, take_axis[0])
         draw()
 
     # register the update function with each slider
@@ -104,9 +120,12 @@ def plot_3d(data: np.ndarray, fig: plt.Figure = None, extent: list[float] = None
     ax_slice_slider.on_changed(slice_axis_update)
 
     if save:
-        fig.savefig(save, dpi=fig.dpi)
-        plt.close()
-    plt.show()
+        fig.savefig(save)
+        plt.close(fig)
+        return None
+
+    if show:
+        plt.show()
 
     return slice_slider, ax_slice_slider
 
@@ -271,7 +290,7 @@ def lab2rgb(lum, a, b) -> np.ndarray:
 
 
 def color_quiver_overlay(data: np.ndarray, slice_axis=2, axial: bool = False, skip: int = 4,
-                         save: Optional[str] = None, saturation=1) -> None:
+                         save: Optional[str] = None, saturation=1, show: bool = True) -> None:
     """Plots vectors using complex color and adds a quiver overlay for clarity.
 
     :param data:        Vector or orientation array with shape (3, nx, ny).
@@ -280,12 +299,12 @@ def color_quiver_overlay(data: np.ndarray, slice_axis=2, axial: bool = False, sk
     :param skip:        Number of arrows to skip for visual clarity.
     :param save:        Filename to which the figure will be saved.
     :param saturation:  Color saturation, None for magnitude-based
+    :param show:        True to show figure, false will maintain the figure for plotting later (with plt.show()).
     :return:            None
     """
 
     sizes = data.shape
     components, spatial_dims = sizes[0], sizes[1:]
-    logging.info(f"{components=},{spatial_dims=}")
     if not (components in [2, 3]):
         raise ValueError("Quiver plot vector field must have 2 or 3 components.")
     if len(spatial_dims) != 2:
@@ -296,25 +315,37 @@ def color_quiver_overlay(data: np.ndarray, slice_axis=2, axial: bool = False, sk
         arrow_kwarg = dict(headwidth=1, headaxislength=0, headlength=0)
     else:
         arrow_kwarg = {}
+
+    # get x and y coordinates by removing 0, 1 or 2 from the array (0, 1, 2)
     x_idx, y_idx = np.delete(np.arange(3), slice_axis)
     logging.info(f"{x_idx=},{y_idx=}")
 
     xx, yy = np.meshgrid(np.linspace(0, spatial_dims[0] - 1, spatial_dims[0]),
                          np.linspace(0, spatial_dims[1] - 1, spatial_dims[1]), indexing='ij')
     logging.info(f"{xx.shape=},{yy.shape=}")
+
+    # create an array that skips every nth (n=skip) arrow, similar to [::skip]
     skips = (slice(None, None, skip), slice(None, None, skip))
     arrow_x = data[x_idx][skips]
     arrow_y = data[y_idx][skips]
 
-    plt.quiver(xx[skips], yy[skips], arrow_x, arrow_y, color=(0, 0, 0, 1),
-               pivot='mid', scale=1 / skip, scale_units='xy', angles='xy', minlength=0, **arrow_kwarg)
+    fig = plt.figure()
+    ax = fig.add_axes((0.2, 0.2, 0.7, 0.7), anchor='SW')
+
+    ax.quiver(xx[skips], yy[skips], arrow_x, arrow_y, color=(0, 0, 0, 1),
+              pivot='mid', scale=1 / skip, scale_units='xy', angles='xy', minlength=0, **arrow_kwarg)
     color = vector_color(data, axial=axial, oop=slice_axis, saturation=saturation)
     logging.info(f"{color.shape=}")
-    plt.imshow(color.transpose((1, 0, 2)), origin='lower')
+    ax.imshow(color.transpose((1, 0, 2)), origin='lower')
+    _set_axis_labels(ax, slice_axis)
+
     if save:
-        plt.axis('off')
-        plt.savefig(save, dpi=330)
-    plt.show()
+        fig.savefig(save)
+        plt.close(fig)
+        return None
+
+    if show:
+        plt.show()
 
 
 def _get_extents(data: np.ndarray) -> list[tuple[float, float, float, float]]:
@@ -327,3 +358,21 @@ def _get_extents(data: np.ndarray) -> list[tuple[float, float, float, float]]:
                (0, data.shape[0], 0, data.shape[2]),
                (0, data.shape[0], 0, data.shape[1])]
     return extents
+
+
+def _set_axis_labels(ax: plt.Axes, take_axis) -> None:
+    """Set axes labels for the plots, given the plot axes and slicing axis.
+
+    :param ax:          Axes object from the figure.
+    :param take_axis:   Index of axis that is being sliced (0, 1, 2).
+    :return:            None.
+    """
+    if take_axis == 0:
+        ax.set_xlabel('y')
+        ax.set_ylabel('z')
+    elif take_axis == 1:
+        ax.set_xlabel('x')
+        ax.set_ylabel('z')
+    elif take_axis == 2:
+        ax.set_xlabel('x')
+        ax.set_ylabel('y')
