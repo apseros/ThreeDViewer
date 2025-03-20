@@ -7,4 +7,4 @@ ThreeDViewer can be installed through pip:
 ```pip install ThreeDViewer```
 
 ### Documentation
-Comprehensive documentation is available in the doc directory or online at [readthedocs](https://ThreeDViewer.readthedocs.io/en/latest/index.html)
+Comprehensive documentation is available online at [readthedocs](https://ThreeDViewer.readthedocs.io/en/latest/index.html)

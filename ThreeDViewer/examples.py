@@ -1,11 +1,10 @@
-import logging
 import magpack.structures
 from magpack.structures import *
 from ThreeDViewer import image
 
 
 def plot_skyrmion() -> None:
-    """Plots a skyrmion using matplotlib."""
+    """Plots a skyrmion to showcase 3D slicing and vector coloring."""
     v_field = magpack.structures.skyrmion(20, 20, 1)
     v_field = magpack.structures.stack_config(v_field, 10, -1)
     image.plot_3d(v_field)
@@ -13,7 +12,7 @@ def plot_skyrmion() -> None:
 
 
 def plot_meron() -> None:
-    """Plots a meron-antimeron pair using matplotlib."""
+    """Plots a meron-antimeron pair to showcase 3D slicing and vector coloring."""
     v_field = magpack.structures.meron_pair(20, 40)
     v_field = magpack.structures.stack_config(v_field, 10, -1)
 
