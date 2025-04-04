@@ -1,4 +1,6 @@
 numpy>=1.25.2
-magpack>=0.1.5
+magpack>=0.2.0
 matplotlib>=3.9.4
 pyvista>=0.38.2
+numpydoc>=1.8.0
+pydata-sphinx-theme>=0.16.1

@@ -11,7 +11,8 @@ ThreeDViewer is a Python package for visualizing 3D scalar and vector fields.
 
 .. toctree::
    :maxdepth: 2
+   :caption: Contents:
 
-   usage
-   ThreeDViewer
-
+   Home page <self>
+   Usage <usage>
+   3D Viewer <_autosummary/ThreeDViewer>
