@@ -1,1 +1,1 @@
-from .image import plot_3d, color_quiver_overlay
+from .image import plot_3d, plot_quiver

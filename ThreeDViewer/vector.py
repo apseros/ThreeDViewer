@@ -2,12 +2,13 @@ import numpy as np
 import pyvista as pv
 
 
-def plot_vector_field(vector_field: np.ndarray):
+def plot_vector_field(vector_field):
     """Plot vector field using pyvista.
 
-    :param: vector_field:   Vector field as a numpy array shaped (3, nx, ny, nz). First index corresponds to the
-                            field's components
-    :return:                None
+    Parameters
+    ----------
+    vector_field : np.ndarray
+        Vector field as a numpy array shaped (3, nx, ny, nz). First index corresponds to the field's components
     """
     # initialize mesh
     _, nx, ny, nz = vector_field.shape
@@ -15,7 +16,7 @@ def plot_vector_field(vector_field: np.ndarray):
     origin = (-(nx - 1) / 2, -(ny - 1) / 2, -(nz - 1) / 2)
     vector_mesh = pv.ImageData(dimensions=(nx, ny, nz), origin=origin)
     vector_mesh['mag'] = vector_field.T.reshape(size, 3)
-    vector_mesh['mag_scalar'] = vector_mesh['mag'][:, 2]
+    vector_mesh['z component'] = vector_mesh['mag'][:, 2]
 
     # remove some values for clarity
     num_arrows = vector_mesh['mag'].shape[0]
@@ -26,19 +27,22 @@ def plot_vector_field(vector_field: np.ndarray):
     arrows = vector_mesh.glyph('mag', factor=2 * np.log10(np.max([nx, ny, nz])))
     pv.set_plot_theme("document")
     p = pv.Plotter()
-    p.add_mesh(arrows, scalars='mag_scalar', ambient=0.5, cmap='coolwarm')
+    p.add_mesh(arrows, scalars='z component', ambient=0.1, cmap='RdBu')
     p.show_grid()
     p.add_bounding_box()
 
     p.show()
 
 
-def plot_scalar_field(field: np.ndarray):
+def plot_scalar_field(field):
     """Plot contours of a scalar field using pyvista.
 
-    :param: scalar:   Scalar field as a numpy array shaped (nx, ny, nz). 
-    :return:          None
-    """    # initialize mesh
+    Parameters
+    ----------
+    field : np.ndarray
+        Scalar field as a numpy array shaped (nx, ny, nz).
+    """
+    # initialize mesh
     nx, ny, nz = field.shape
     origin = (-(nx - 1) / 2, -(ny - 1) / 2, -(nz - 1) / 2)
     scalar_mesh = pv.ImageData(dimensions=(nx, ny, nz), origin=origin)

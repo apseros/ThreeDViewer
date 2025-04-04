@@ -1,36 +1,23 @@
-import magpack.structures
-from magpack.structures import *
-from ThreeDViewer import image
+import magpack.io
+import ThreeDViewer.data
+from importlib import resources
+from ThreeDViewer import plot_3d, plot_quiver
+from ThreeDViewer.vector import plot_vector_field
 
 
-def plot_skyrmion() -> None:
-    """Plots a skyrmion to showcase 3D slicing and vector coloring."""
-    v_field = magpack.structures.skyrmion(20, 20, 1)
-    v_field = magpack.structures.stack_config(v_field, 10, -1)
-    image.plot_3d(v_field)
-    image.color_quiver_overlay(v_field[..., 5], skip=1)
+def example():
+    """Plots an example magnetization structure using three different functions.
 
-
-def plot_meron() -> None:
-    """Plots a meron-antimeron pair to showcase 3D slicing and vector coloring."""
-    v_field = magpack.structures.meron_pair(20, 40)
-    v_field = magpack.structures.stack_config(v_field, 10, -1)
-
-    image.plot_3d(v_field)
-    image.color_quiver_overlay(v_field[..., 5], skip=1)
+    See :ref:`example` for a more detailed description.
+    """
+    data_path_resource = resources.files(ThreeDViewer.data) / 'cylinder.ovf'
+    with data_path_resource as resource:
+        data = magpack.io.load_ovf(resource)
+    vf = data.magnetization
+    plot_vector_field(vf)
+    plot_3d(vf, arrow_skip=1, init_take=2)
+    plot_quiver(vf[..., :, 15, :], slice_axis=1, skip=4, arrow_color=(0.5, 0.5, 0.5, 1))
 
 
 if __name__ == "__main__":
-    logging.getLogger().setLevel(logging.INFO)
-    print("Choose a structure to plot: ")
-    print("1. Skyrmion")
-    print("2. Meron")
-
-    choice = input()
-
-    if choice == "1":
-        plot_skyrmion()
-    elif choice == "2":
-        plot_meron()
-    else:
-        print("Invalid choice")
+    example()
