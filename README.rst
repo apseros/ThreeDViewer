@@ -17,15 +17,15 @@ Comprehensive documentation is available online at
 
 Quickstart
 ----------
-To view a 3D scalar field and slice all axes interactively, use
+To view a 3D scalar, vector or orientation field and slice all axes interactively, use
 
 .. code-block::
 
     ThreeDViewer.plot_3d(scalar_field)
 
-It is also possible to plot vector and orientation fields. Each pixel will have a hue according to the vector's
-direction and a lightness depending on the into-the-plane (bright) and out-of-plane (dark) components. This color
-adjusts according to the viewing axis, but can be made consistent by setting the argument ``const_color`` to ``True``.
+For vector and orientation fields, each pixel will have a hue according to the vector's direction and a lightness
+depending on the into-the-plane (bright) and out-of-plane (dark) components. This color adjusts according to the
+viewing axis, but can be kept constant across different axes by setting the argument ``const_color`` to ``True``.
 
 An example vector field is included in the package and the resulting plots are shown below
 

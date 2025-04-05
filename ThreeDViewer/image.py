@@ -32,7 +32,8 @@ def axial_align(orientation_field, index):
 
 
 def plot_3d(data, fig=None, init_take=1, init_slice=0, axial=False,
-            save=None, const_color=False, arrow_skip=0, show=True, axes_names = ('x','y','z'), **kwargs):
+            save=None, const_color=False, arrow_skip=0, show=True, axes_names=None, title='',
+            mode=4, **kwargs):
     """Plots a 3D scalar or vector field, with the possibility to slice along different axes.
 
     Plotting maintains a right-handed axis system, looking down from the slicing axis.
@@ -59,6 +60,10 @@ def plot_3d(data, fig=None, init_take=1, init_slice=0, axial=False,
         True to show figure, false will maintain the figure for plotting later with plt.show().
     axes_names : 3-tuple of string (optional)
         Axis names to use for plotting.
+    title : str (optional)
+        Title of the figure.
+    mode : int | callable (optional)
+        Lightness mapping mode (1 - 4) or function (see :func:`vector_color`).
 
     Returns
     -------
@@ -76,11 +81,11 @@ def plot_3d(data, fig=None, init_take=1, init_slice=0, axial=False,
     if data.ndim == 4 and data.shape[-1] != 3 and data.shape[0] == 3:
         if const_color:
             # create rgb image, new shape will be (initial shape, 3)
-            data = vector_color(data, axial=axial, oop=init_take)
+            data = vector_color(data, axial=axial, oop=init_take, mode=mode)
         else:
             # get a different color for each slicing option such that black and white are out-of- and into-plane colors
             # new shape will be (3, initial shape, 3)
-            multi_color = np.stack([vector_color(data, axial=axial, oop=ii) for ii in range(3)])
+            multi_color = np.stack([vector_color(data, axial=axial, oop=ii, mode=mode) for ii in range(3)])
             data = multi_color[init_take]
     elif data.ndim == 3:
         # make sure arrows are set to false since there is no vector field
@@ -91,6 +96,7 @@ def plot_3d(data, fig=None, init_take=1, init_slice=0, axial=False,
 
     if fig is None:
         fig = plt.figure()
+    fig.suptitle(title)
 
     if axes_names is None:
         axes_names = ('x', 'y', 'z')
@@ -205,7 +211,7 @@ def vector_color(data, saturation=1, mode=4, axial=False, oop=1):
     The available modes are:
 
     1. Linear:          :math:`l = y`
-    2. Root:            :math:`l = \sqrt{y}`
+    2. Root:            :math:`l = \pm\sqrt{y}`
     3. Tangential:      :math:`l = \frac {2}{\pi} \tan{y}`
     4. Cubic:           :math:`l = y^3`
 
@@ -215,8 +221,8 @@ def vector_color(data, saturation=1, mode=4, axial=False, oop=1):
         Input vector field numpy array shaped (3, x, y) or (3, x, y, z).
     saturation : float (optional)
         0...1 for color saturation or 0 to colour according to magnitude.
-    mode : int (optional)
-        Choice (0 - 4) for lightness maps described above.
+    mode : int (optional) | callable
+        Choice (0 - 4) for lightness maps described above or mapping function.
     axial : bool (optional)
         Apply degenerate coloring for orientation fields.
     oop : int (optional)
@@ -242,30 +248,29 @@ def vector_color(data, saturation=1, mode=4, axial=False, oop=1):
 
     hue = np.arctan2(x, z)
 
+
+    y_norm = y / np.max(magpack.vectorop.magnitude(data))
+
+    lightness_map = {1 : lambda x : x,
+                     2 : lambda x : np.sign(x) * np.sqrt(np.abs(x)),
+                     3 : lambda x : 2 * np.tan(x) / np.pi,
+                     4 : lambda x : x ** 3}
+
+    if isinstance(mode, int):
+        mode = lightness_map.get(mode)
+    if callable(mode):
+        y_norm = mode(y_norm)
+    else:
+        logging.warning("Lightness mapping defaulting to linear.")
+
     if axial:
+        # axial is applied if the field is mostly in-plane and degenerate coloring is necessary
         if np.count_nonzero(np.sqrt(x ** 2 + z ** 2) > np.abs(y)):
             hue *= 2
-            logging.info("Vector primarily in-plane, using degenerate map.")
-
-    if mode not in [1, 2, 3, 4]:
-        logging.warning("Invalid lightness function, using default.")
-        mode = 1
-
-    y_max = np.max(magpack.vectorop.magnitude(data))
-    y_max = 1 if y_max < 1 else y_max
-    y_norm = y / y_max
-
-    if mode == 2:
-        y_norm = np.sign(y_norm) * np.sqrt(np.abs(y_norm))
-    elif mode == 3:
-        y_norm = 2 * np.tan(y_norm) / np.pi
-    elif mode == 4:
-        y_norm = y_norm ** 3
 
     lightness = (y_norm + 1) / 2
     mag = np.sqrt(x ** 2 + y ** 2 + z ** 2)
-    lightness = np.where(mag == 0, 1, lightness)
-
+    lightness = np.where(mag == 0, 1, lightness)  # make the background white
     if not 0 <= saturation <= 1:
         saturation = 1
     elif saturation == 0:
@@ -273,7 +278,8 @@ def vector_color(data, saturation=1, mode=4, axial=False, oop=1):
     return hls2rgb(hue, lightness, saturation)
 
 
-def plot_quiver(data, slice_axis=2, axial=False, skip=4, save=None, saturation=1, show=True, arrow_color=None):
+def plot_quiver(data, slice_axis=2, axial=False, skip=4, save=None, saturation=1, show=True, arrow_color=None,
+                title='', mode=4):
     """Plots vectors using complex color and adds a quiver overlay for clarity.
 
     Parameters
@@ -294,6 +300,10 @@ def plot_quiver(data, slice_axis=2, axial=False, skip=4, save=None, saturation=1
         True to show figure, false will maintain the figure for plotting later with plt.show().
     arrow_color : 4-tuple (optional)
         Arrow colors in RGBA values from 0 to 1.
+    title : str (optional)
+        Title of the figure.
+    mode : int (optional) | callable
+        Choice (0 - 4) for lightness map or callable mapping function (see :func:`vector_color`).
     """
 
     sizes = data.shape
@@ -307,13 +317,14 @@ def plot_quiver(data, slice_axis=2, axial=False, skip=4, save=None, saturation=1
         data = np.concatenate([data, np.zeros((1,) + spatial_dims)], axis=0)
 
     # get color
-    color = vector_color(data, axial=axial, oop=slice_axis, saturation=saturation)
+    color = vector_color(data, axial=axial, oop=slice_axis, saturation=saturation, mode=mode)
     if slice_axis != 1:
         color = color.transpose((1, 0, 2))
 
     h_axis, v_axis = _get_components(slice_axis)
 
     fig = plt.figure()
+    fig.suptitle(title)
     ax = fig.add_axes((0.2, 0.2, 0.7, 0.7), anchor='SW')
     extent = (0., color.shape[1], 0., color.shape[0])
     ax.imshow(color, origin='lower', extent=extent)
